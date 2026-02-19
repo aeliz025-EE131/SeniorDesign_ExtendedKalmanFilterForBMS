@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdint.h>
+#include <TimerISR.h>
 /*#include <avr/io.h>
 #include <avr/interrupt.h>
 */
@@ -274,15 +275,17 @@ void TickFun_ExtendedKalmanFilter(){
 int main(){
    //TODO: initialize all outputs and inputs
   //TODO: initialize your global variables, state, etc.
+
+
   EKF_State = EKF_init;
   //ADC_init();
-  //TimerOn();
-  //TimerSet(100); //100ms = 0.1sec
+  TimerOn();
+  TimerSet(100); //100ms = 0.1sec
     while (1){
 	  TickFun_ExtendedKalmanFilter();      // Execute one synchSM tick
       //add the timerflag header file
-      /*while (!TimerFlag){}  // Wait for SM period
+      while (!TimerFlag){}  // Wait for SM period
       TimerFlag = 0;        // Lower flag
-     }*/
+     }
     return 0;
 }
