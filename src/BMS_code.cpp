@@ -2,10 +2,34 @@
 #include "TimerISR.h"
 #include "EKF_Functions.h" //ALL EKF FUNCTIONS FOR BQ
 
-
 #define CELL_NO_TO_ADDR(cellNo) (0x14 + ((cellNo-1)*2))
 #define packVolt 0x36;
+#define NUM_TASKS 3
 
+typedef struct task{
+	signed 	 char state; 		//Task's current state
+	unsigned long period; 		//Task period
+	unsigned long elapsedTime; 	//Time elapsed since last task tick
+	int (*TickFct)(int); 		//Task tick function
+} task;
+
+task tasks[NUM_TASKS]; // declared task array with 5 tasks
+
+void TimerISR() {
+	for ( unsigned int i = 0; i < NUM_TASKS; i++ ) {                   // Iterate through each task in the task array
+		if ( tasks[i].elapsedTime == tasks[i].period ) {           // Check if the task is ready to tick
+			tasks[i].state = tasks[i].TickFct(tasks[i].state); // Tick and set the next state for this task
+			tasks[i].elapsedTime = 0;                          // Reset the elapsed time for the next tick
+		}
+		tasks[i].elapsedTime += GCD_PERIOD;                        // Increment the elapsed time by GCD_PERIOD
+	}
+}
+
+//ALL PERIODS TO DECLARE
+const unsigned char EKF_Period = 100; //100ms
+/*const unsigned [***] Button_Period = 
+const unsigned [***] BMS_Period = */
+const unsigned long GCD_PERIOD = 100;
 
 unsigned int buttonA_pin =4 ;
 unsigned int buttonB_pin =5 ;
@@ -92,6 +116,7 @@ void tick(){
 
 //state machine states
 enum states { EKF_init, EKF_Prediciton, EKF_Update} EKF_State;
+
 /*-------------------------------------------*/
 /*---------- EKF State Machine --------------*/
 /*-------------------------------------------*/

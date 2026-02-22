@@ -4,10 +4,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdint.h>
-/*#include <TimerISR.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-*/
 
 //All state space variables and battery parameters
 //battery parameters must be obtained from pulse discharge test
