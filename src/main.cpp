@@ -39,102 +39,17 @@ typedef struct{
 } EKF_1RC;
 static EKF_1RC ekf;
 
-/*-------------------------------------------*/
-/*-------- OCV-SOC LookUp Table - -----------*/
-/*-------------------------------------------*/
-#define OCV_TABLE_SIZE 17
+const float a = 2.50638087f;
+const float b = 4.05668091f;
+const float c = -5.73399353f;
+const float d = 3.29784602f;
 
-// SOC in ascending order (0 → 1)
-const float soc_table[OCV_TABLE_SIZE] =
-{
-    0.0143f,
-    0.0429f,
-    0.0714f,
-    0.1000f,
-    0.1429f,
-    0.2143f,
-    0.2857f,
-    0.3571f,
-    0.4286f,
-    0.5000f,
-    0.5714f,
-    0.6429f,
-    0.7143f,
-    0.7857f,
-    0.8571f,
-    0.9286f,
-    1.0000f
-};
-
-const float ocv_table[OCV_TABLE_SIZE] =
-{
-    2.55f,
-    2.80f,
-    3.05f,
-    3.25f,
-    3.40f,
-    3.52f,
-    3.60f,
-    3.66f,
-    3.72f,
-    3.78f,
-    3.85f,
-    3.90f,
-    3.95f,
-    4.00f,
-    4.04f,
-    4.08f,
-    4.12f
-};
-
-float OCV_lookup(float soc)
-{
-    if (soc <= soc_table[0])
-        return ocv_table[0];
-
-    if (soc >= soc_table[OCV_TABLE_SIZE - 1])
-        return ocv_table[OCV_TABLE_SIZE - 1];
-
-    for (int i = 0; i < OCV_TABLE_SIZE - 1; i++)
-    {
-        if (soc >= soc_table[i] && soc <= soc_table[i + 1])
-        {
-            float x0 = soc_table[i];
-            float x1 = soc_table[i + 1];
-            float y0 = ocv_table[i];
-            float y1 = ocv_table[i + 1];
-
-            float slope = (y1 - y0) / (x1 - x0);
-
-            return y0 + slope * (soc - x0);
-        }
-    }
-
-    return ocv_table[0];
+float OCV_SOC(float soc){
+    return a + b*soc + c*(soc*soc) + d*(soc*soc*soc);
 }
 
-float dOCV_dSoC_lookup(float soc)
-{
-    if (soc <= soc_table[0])
-        soc = soc_table[0];
-
-    if (soc >= soc_table[OCV_TABLE_SIZE - 1])
-        soc = soc_table[OCV_TABLE_SIZE - 1];
-
-    for (int i = 0; i < OCV_TABLE_SIZE - 1; i++)
-    {
-        if (soc >= soc_table[i] && soc <= soc_table[i + 1])
-        {
-            float x0 = soc_table[i];
-            float x1 = soc_table[i + 1];
-            float y0 = ocv_table[i];
-            float y1 = ocv_table[i + 1];
-
-            return (y1 - y0) / (x1 - x0);
-        }
-    }
-
-    return 0.0f;
+float dOCV_dSoC(float soc){
+    return b + 2*c*soc + 3*d*(soc*soc);
 }
 
 /*-------------------------------------------*/
@@ -162,12 +77,12 @@ void Prediction_TimeUpdate( float I ){
 /*-------------------------------------------*/
 void Correction_MeasUpdate( float V, float I){
     //Vt = V_OCV(SoC(K)) - Vrc - R0*I(K)
-    float V_Predict = OCV_lookup(ekf.SoC) - ekf.Vrc - ekf.R_0*I;
+    float V_Predict = OCV_SOC(ekf.SoC) - ekf.Vrc - ekf.R_0*I;
     float dK = V - V_Predict;
 
     //linearize measurement equation 
     //Hk = dh(x,u)/dx = [d(V_OCV(SoC(K)))/d(SoC) -1]
-    float H_0 = dOCV_dSoC_lookup(ekf.SoC);
+    float H_0 = dOCV_dSoC(ekf.SoC);
     float H_1 = -1.0f;
 
     //innovation covariance S
@@ -244,14 +159,17 @@ void TickFun_ExtendedKalmanFilter(){
 
             EKF_State = EKF_Prediciton;
             break;
+
         case(EKF_Prediciton):
             //grab current
             EKF_State = EKF_Update;
             break;
+
         case(EKF_Update):
             //grab current AND voltage
             EKF_State = EKF_Prediciton;
             break;
+
         default:
             EKF_State = EKF_init;
             break;
@@ -261,12 +179,15 @@ void TickFun_ExtendedKalmanFilter(){
     switch(EKF_State){
         case(EKF_init):
             break;
+
         case(EKF_Prediciton):
             Prediction_TimeUpdate(current);
             break;
+
         case(EKF_Update):
             Correction_MeasUpdate(voltage, current);
             break;
+            
         default:
             break;   
     }
