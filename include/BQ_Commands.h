@@ -214,7 +214,4 @@ void writeSubcommand(uint16_t subcmd, uint8_t *data, uint8_t dataLen) {
   writeReg(0x60, checksum);
   writeReg(0x61, length);
 }
-
-
-
 #endif
