@@ -2,9 +2,9 @@
 #include "TimerISR.h"
 #include "EKF_Functions.h" //ALL EKF FUNCTIONS FOR BQ
 
-#define CELL_NO_TO_ADDR(cellNo) (0x14 + ((cellNo-1)*2))
-#define packVolt 0x36;
+//#define CELL_NO_TO_ADDR(cellNo) (0x14 + ((cellNo-1)*2))
 #define NUM_TASKS 3
+#define buttonA_pin 4
 
 typedef struct task{
 	signed 	 char state; 		//Task's current state
@@ -12,7 +12,6 @@ typedef struct task{
 	unsigned long elapsedTime; 	//Time elapsed since last task tick
 	int (*TickFct)(int); 		//Task tick function
 } task;
-
 task tasks[NUM_TASKS]; // declared task array with 5 tasks
 
 void TimerISR() {
@@ -27,106 +26,73 @@ void TimerISR() {
 
 //ALL PERIODS TO DECLARE
 const unsigned char EKF_Period = 100; //100ms
-/*const unsigned [***] Button_Period = 
-const unsigned [***] BMS_Period = */
+const unsigned char Button_Period = 100;
+//const unsigned [***] BMS_Period = */
 const unsigned long GCD_PERIOD = 100;
 
-unsigned int buttonA_pin =4 ;
-unsigned int buttonB_pin =5 ;
-unsigned int redLED = 3;
-unsigned int greenLED =2;
-unsigned int num_cell = 10;
+//ALL GLOBAL VARIABLES SHARED ACROSS TICK FUNCTIONS
+bool SysON;
+bool CHRG;
+unsigned char current; //get current command
 
-enum states {INIT,buttonAPressed, buttonBPressed,DCHG, DCHG_done ,CHG, CHG_done} state;
-void tick(){
-  
-  int buttonA;
-  int buttonB;
-  int batt_cell[10];
-  int16_t batt_Curr = directCommand(0x3A)/3;
-  for (int i =0; i<num_cell; i++){batt_cell[i]=directCommand(CELL_NO_TO_ADDR(i+1));}
-  
-  switch(state){
-  
-    case INIT:
-     buttonA = digitalRead(buttonA_pin);
-     if(buttonA == 1){state = buttonAPressed;}
-     break;
-     
-    case buttonAPressed:
-     buttonA = digitalRead(buttonA_pin);
-     Serial.println("button A pressed");
-     if(buttonA == 0){state = DCHG;}
-     break;
-     
-    case buttonBPressed:
-     buttonA = digitalRead(buttonA_pin);
-     Serial.println("button B pressed");
-     if(buttonA == 0){state = INIT;}
-     break;
-     
-    case DCHG:
-      buttonA = digitalRead(buttonA_pin);
-      if(buttonA == 1){state = buttonBPressed;}
-      for (int i =0; i<num_cell; i++){ if(batt_cell[i]< 2700){state = DCHG_done;}}
-     
-     break;
-    case DCHG_done:
-     buttonA = digitalRead(buttonA_pin);
-     if(buttonA == 1){state = buttonBPressed;}
-     //if(batt_Curr < 0){state = CHG;}
-     
-     break;
-    case CHG:
-     for (int i =0; i<num_cell; i++){ if(batt_cell[i]> 3700){state = INIT;}}
-     break;
-    case CHG_done:
-     break;
-  }
-  switch(state){
-     case INIT:
-      sendSubcommand(0x0095);
-      Serial.println("INIT");
-      digitalWrite(greenLED, 0);
-      digitalWrite(redLED, 0);
-     break;
-    case DCHG:
-     sendSubcommand(0x0096);
-     Serial.println("DCHG");
-     digitalWrite(greenLED, 1);
-     break;
-    case DCHG_done:
-     sendSubcommand(0x0095);
-     Serial.println("DCHG done");
-     digitalWrite(greenLED, 0);
-     digitalWrite(redLED, 1);
-     break;
-    case CHG:
-     sendSubcommand(0x0096);
-     Serial.println("CHG");
-     digitalWrite(redLED, !(isDischarging()));
-     digitalWrite(greenLED, isDischarging());
-     digitalWrite(greenLED, !(isDischarging()));
-     break;
-    case CHG_done:
-     break;
-  }
-  
+/*-------------------------------------------*/
+/*--------- Button State Machine ------------*/
+/*-------------------------------------------*/
+enum ButtonStates {ButtonINIT, OFF, ButtonPressed_ON, ON, ButtonPressed_OFF};
+int Button_TickFun(int state){
+    bool button = digitalRead(buttonA_pin); //read button
+    //transitions
+    switch(state){
+        case (ButtonINIT):
+            SysON = 0;
+            state = OFF;
+            break;
+        
+        case (OFF):
+            if(button && !CHRG){
+                SysON = 1;
+                state = ButtonPressed_ON;
+            }
+            break;
+
+        case (ButtonPressed_ON):
+            if(!button){
+                state = ON;
+            }
+            break;
+
+        case (ON):
+            if(button || CHRG){
+                SysON = 0;
+                state = ButtonPressed_OFF;
+            }
+            break;
+
+        case (ButtonPressed_OFF):
+            if(!button){
+                state = OFF;
+            }
+            break;
+
+        default:
+            state = ButtonINIT;
+            break; 
+    }
+
+    return state;
 }
-
-//state machine states
-enum states { EKF_init, EKF_Prediciton, EKF_Update} EKF_State;
 
 /*-------------------------------------------*/
 /*---------- EKF State Machine --------------*/
 /*-------------------------------------------*/
-void TickFun_ExtendedKalmanFilter(){
+enum EKF_State { EKF_init, EKF_Prediciton, EKF_Update};
+int TickFun_ExtendedKalmanFilter(int state){
     //assign subcommand to obtain voltage and current
     unsigned char current;
     unsigned char voltage;
 
     //State transitions
-    switch(EKF_State){
+    switch(state){
         case(EKF_init):
             //initalize all parameters and variables before proceeding!!
             //please...
@@ -154,26 +120,26 @@ void TickFun_ExtendedKalmanFilter(){
             //Measurement noise
             ekf.R = 1e-3;
 
-            EKF_State = EKF_Prediciton;
+            state = EKF_Prediciton;
             break;
 
         case(EKF_Prediciton):
             //grab current
-            EKF_State = EKF_Update;
+            state = EKF_Update;
             break;
 
         case(EKF_Update):
             //grab current AND voltage
-            EKF_State = EKF_Prediciton;
+            state = EKF_Prediciton;
             break;
 
         default:
-            EKF_State = EKF_init;
+            state = EKF_init;
             break;
     }
 
     //State Actions
-    switch(EKF_State){
+    switch(state){
         case(EKF_init):
             break;
 
@@ -188,22 +154,28 @@ void TickFun_ExtendedKalmanFilter(){
         default:
             break;   
     }
+
+    return state;
+}
+
+/*-------------------------------------------*/
+/*---------- BMS State Machine --------------*/
+/*-------------------------------------------*/
+enum states {BMS_INIT, DISCHRG, DISCHRG_DONE, CHRG} BMS_state;
+int BMS_Test_TickFun(int state){
+    //cells[10];
+
+    return state;
 }
 
 void setup() {
-
-
   Wire.begin();
   Serial.begin(115200);
   delay(10);
   
   pinMode(buttonA_pin, INPUT);
-  pinMode(buttonB_pin, INPUT);
-  pinMode(redLED, OUTPUT);
-  pinMode(greenLED, OUTPUT);
 
   // 1) Enter CONFIGUPDATE mode: subcommand 0x0090
-  
   sendSubcommand(0x0090);
   waitCfgUpdate(true);
 
@@ -222,15 +194,15 @@ void setup() {
 }
 
 void loop() {
-  // normal operation
+    
+    // TODO: Assign your tasks into the tasks[] array
+    tasks[0].period = Button_Period;
+    tasks[0].state = ButtonINIT;
+    tasks[0].elapsedTime = Button_Period;
+    tasks[0].TickFct = &Button_TickFun;
 
- // bqWriteDataMemWord(0x0084, 0x0ED8);
-  //bqWriteDataMemWord(0x0083, 0x0200);
-//  int16_t TS1 = directCommand(0x70);
- // int16_t TS3 = directCommand(0x74);
- // int16_t data =bqReadDataMemWord(0x0085);
-//  int32_t currData = directCommand(0x3A)/3;
- // Serial.println('1');
-  tick();
-  delay(500);
+    tasks[1].period = EKF_Period;
+    tasks[1].state = EKF_init;
+    tasks[1].elapsedTime = EKF_Period;
+    tasks[1].TickFct = &TickFun_ExtendedKalmanFilter;
 }
