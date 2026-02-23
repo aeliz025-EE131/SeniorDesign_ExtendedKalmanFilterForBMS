@@ -32,7 +32,7 @@ const unsigned long GCD_PERIOD = 100;
 
 //ALL GLOBAL VARIABLES SHARED ACROSS TICK FUNCTIONS
 bool SysON;
-bool CHRG;
+bool CHARGE;
 bool DSCHRG_FET;
 bool CHRG_FET;
 uint8_t cell_v[10]; //mV
@@ -164,10 +164,65 @@ int TickFun_ExtendedKalmanFilter(int state){
 /*-------------------------------------------*/
 /*---------- BMS State Machine --------------*/
 /*-------------------------------------------*/
-enum states {BMS_INIT, DISCHRG, DISCHRG_DONE, CHRG} BMS_state;
+enum states {BMS_INIT, IDLE, DISCHRG, DISCHRG_DONE, CHRG} BMS_state;
 int BMS_Test_TickFun(int state){
     //cells[10];
+    //I = GetCurrent();
 
+    //transitions
+    switch(state){
+        case (BMS_INIT):
+            //disableDSCHRG_FETS();
+            //disableCHRG_FETS();
+            //disableBalancing();
+            CHARGE = 0;
+            state = IDLE;
+        break;
+
+        case (IDLE):
+            if(SysON == 1){
+                //EnableDSCHRG_FETS();
+                //EnableBalancing();
+                state = DISCHRG;
+            }
+        break;
+
+        case (DISCHRG):
+            if(SysON == 0 ){
+                //disableDSCHRG_FETS();
+                //disableBalancing();
+                state = IDLE;
+            }
+            else if( SysON == 1 && cell_v[i] <= 3300){
+                //disableDSCHRG_FETS();
+                //enableCHRG_FETS();
+                state = DISCHRG_DONE;
+            }
+        break;
+
+        /*case (DISCHRG_DONE):
+            if(I >= 100){
+                CHARGE = 1;
+                state = CHRG;
+            }
+        break;
+        
+        case (CHRG):
+            if( I = 0 && !CHARGE){
+                disableBalancing();
+                state = IDLE;
+                }
+        break;*/
+
+        default:
+            state = BMS_INIT;
+            break;
+    }
+
+    //actions
+    switch(state){
+
+    }
     return state;
 }
 
