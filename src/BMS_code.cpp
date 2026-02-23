@@ -33,7 +33,8 @@ const unsigned long GCD_PERIOD = 100;
 //ALL GLOBAL VARIABLES SHARED ACROSS TICK FUNCTIONS
 bool SysON;
 bool CHRG;
-unsigned char current; //get current command
+signed char current; //get current command (ex 100mA or -10mA)
+unsigned long voltage; //get voltage in mV (ex. 3700 mV)
 
 /*-------------------------------------------*/
 /*--------- Button State Machine ------------*/
