@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdint.h>
-#include <avr/io.h>
 #include <avr/interrupt.h>
 
 //All state space variables and battery parameters
@@ -54,7 +53,7 @@ float dOCV_dSoC(float soc){
 /*-------- PREDICITON TIME UPDATE -----------*/
 /*-------------------------------------------*/
 void Prediction_TimeUpdate( float I ){
-    ekf.SoC = ekf.SoC - (ekf.dt/(ekf.Q_nom)) * I;
+    ekf.SoC = ekf.SoC - (ekf.dt/(ekf.Q_nom)) * (I/1000);
     ekf.Vrc = ekf.a * ekf.Vrc + ekf.b * I;
 
     float P_00 = ekf.P_00;

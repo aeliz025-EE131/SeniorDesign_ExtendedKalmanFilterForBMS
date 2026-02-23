@@ -33,8 +33,13 @@ const unsigned long GCD_PERIOD = 100;
 //ALL GLOBAL VARIABLES SHARED ACROSS TICK FUNCTIONS
 bool SysON;
 bool CHRG;
-signed char current; //get current command (ex 100mA or -10mA)
-unsigned long voltage; //get voltage in mV (ex. 3700 mV)
+bool DSCHRG_FET;
+bool CHRG_FET;
+uint8_t cell_v[10]; //mV
+
+//assign subcommand to obtain voltage and current
+float current; //get current command (ex 100mA or -10mA)
+float voltage; //get voltage in mV (ex. 3700 mV)
 
 /*-------------------------------------------*/
 /*--------- Button State Machine ------------*/
@@ -88,9 +93,6 @@ int Button_TickFun(int state){
 /*-------------------------------------------*/
 enum EKF_State { EKF_init, EKF_Prediciton, EKF_Update};
 int TickFun_ExtendedKalmanFilter(int state){
-    //assign subcommand to obtain voltage and current
-    unsigned char current;
-    unsigned char voltage;
 
     //State transitions
     switch(state){
@@ -100,7 +102,7 @@ int TickFun_ExtendedKalmanFilter(int state){
             ekf.SoC = 0.5;      //initializing SoC at 50%
             ekf.Vrc = 0.0;
             ekf.R_0 = 0.03;     //internal resistance is 0.03 milli-ohms based on the datasheet
-            ekf.Q_nom = 3.5;    //Nomincal capacity is 3500 mAhr = 3.5 Ahr
+            ekf.Q_nom = 3.5 * 3600;    //Nomincal capacity is 3500 mAhr = 3.5 Ahr
 
             /*ekf.R_1 = 
             ekf.C_1 =
@@ -109,10 +111,10 @@ int TickFun_ExtendedKalmanFilter(int state){
             ekf.b = R_1*(1 - a);*/
 
             //Covariance matrix
-            ekf.P_00 = 1;
-            ekf.P_01 = 0;
-            ekf.P_10 = 1;
-            ekf.P_11 = 0;
+            ekf.P_00 = 0.01f;
+            ekf.P_01 = 0.0f;
+            ekf.P_10 = 0.0f;
+            ekf.P_11 = 0.01f;
 
             //Process Noise 
             ekf.Q_00 = 1e-6;
