@@ -12,6 +12,7 @@ typedef struct task{
 	unsigned long elapsedTime; 	//Time elapsed since last task tick
 	int (*TickFct)(int); 		//Task tick function
 } task;
+
 task tasks[NUM_TASKS]; // declared task array with 5 tasks
 
 void TimerISR() {
@@ -27,19 +28,17 @@ void TimerISR() {
 //ALL PERIODS TO DECLARE
 const unsigned char EKF_Period = 100; //100ms
 const unsigned char Button_Period = 100;
-//const unsigned [***] BMS_Period = */
-const unsigned long GCD_PERIOD = 100;
+const unsigned char BMS_Period = 100;
+const unsigned char GCD_PERIOD = 100;
 
 //ALL GLOBAL VARIABLES SHARED ACROSS TICK FUNCTIONS
+EKF_1RC ekf[NUM_CELLS];
 bool SysON;
 bool CHARGE;
 bool DSCHRG_FET;
 bool CHRG_FET;
-uint8_t cell_v[10]; //mV
-
-//assign subcommand to obtain voltage and current
 float current; //get current command (ex 100mA or -10mA)
-float voltage; //get voltage in mV (ex. 3700 mV)
+uint16_t cell_v[10]; //get voltage in mV (ex. 3700 mV) for each cell
 
 /*-------------------------------------------*/
 /*--------- Button State Machine ------------*/
@@ -55,7 +54,7 @@ int Button_TickFun(int state){
             break;
         
         case (OFF):
-            if(button && !CHRG){
+            if(button && !CHARGE){
                 SysON = 1;
                 state = ButtonPressed_ON;
             }
@@ -68,7 +67,7 @@ int Button_TickFun(int state){
             break;
 
         case (ON):
-            if(button || CHRG){
+            if(button || CHARGE){
                 SysON = 0;
                 state = ButtonPressed_OFF;
             }
@@ -97,42 +96,23 @@ int TickFun_ExtendedKalmanFilter(int state){
     //State transitions
     switch(state){
         case(EKF_init):
-            //initalize all parameters and variables before proceeding!!
-            //please...
-            ekf.SoC = 0.5;      //initializing SoC at 50%
-            ekf.Vrc = 0.0;
-            ekf.R_0 = 0.03;     //internal resistance is 0.03 milli-ohms based on the datasheet
-            ekf.Q_nom = 3.5 * 3600;    //Nomincal capacity is 3500 mAhr = 3.5 Ahr
-
-            /*ekf.R_1 = 
-            ekf.C_1 =
-            ekf.dt = 0.1
-            ekf.a = exp(-dt/(R_1*C_1)); 
-            ekf.b = R_1*(1 - a);*/
-
-            //Covariance matrix
-            ekf.P_00 = 0.01f;
-            ekf.P_01 = 0.0f;
-            ekf.P_10 = 0.0f;
-            ekf.P_11 = 0.01f;
-
-            //Process Noise 
-            ekf.Q_00 = 1e-6;
-            ekf.Q_11 = 1e-5;
-
-            //Measurement noise
-            ekf.R = 1e-3;
-
+            //setting up parameters for each cell (total of 10)
+            //please initalize all parameters and variables before proceeding!!
+            //ALL PARAMETERS ARE IN THE EKF_FUNCTIONS.h
+            for(int i = 0; i < NUM_CELLS; i++){
+                cells_INIT(i);
+            }
             state = EKF_Prediciton;
             break;
 
         case(EKF_Prediciton):
-            //grab current
+            //grab current/1000
             state = EKF_Update;
             break;
 
         case(EKF_Update):
-            //grab current AND voltage
+            //grab current/1000
+            //grab cell_v[i]/1000
             state = EKF_Prediciton;
             break;
 
@@ -147,11 +127,11 @@ int TickFun_ExtendedKalmanFilter(int state){
             break;
 
         case(EKF_Prediciton):
-            Prediction_TimeUpdate(current);
+            //Prediction_TimeUpdate(current);
             break;
 
         case(EKF_Update):
-            Correction_MeasUpdate(voltage, current);
+            //Correction_MeasUpdate(voltage, current);
             break;
 
         default:
@@ -166,8 +146,8 @@ int TickFun_ExtendedKalmanFilter(int state){
 /*-------------------------------------------*/
 enum states {BMS_INIT, IDLE, DISCHRG, DISCHRG_DONE, CHRG} BMS_state;
 int BMS_Test_TickFun(int state){
-    //cells[10];
-    //I = GetCurrent();
+    //static unsigned char idx = 0;
+    //unsigned char pack_v = 0;
 
     //transitions
     switch(state){
@@ -192,23 +172,23 @@ int BMS_Test_TickFun(int state){
                 //disableDSCHRG_FETS();
                 //disableBalancing();
                 state = IDLE;
-            }
-            else if( SysON == 1 && cell_v[i] <= 3300){
+            }/*
+            else if( SysON == 1 && ( pack_v <= 33 || ekf.SoC <= MinSoC){
                 //disableDSCHRG_FETS();
-                //enableCHRG_FETS();
                 state = DISCHRG_DONE;
-            }
+            }*/
         break;
 
         /*case (DISCHRG_DONE):
-            if(I >= 100){
+            if(abs(current) >= 100){
+                EnableCHRG_FETS();
                 CHARGE = 1;
                 state = CHRG;
             }
         break;
         
         case (CHRG):
-            if( I = 0 && !CHARGE){
+            if( abs(current) >= 100 && !CHARGE || ekf.SoC >= MaxSoc){
                 disableBalancing();
                 state = IDLE;
                 }
@@ -221,8 +201,44 @@ int BMS_Test_TickFun(int state){
 
     //actions
     switch(state){
+        case (BMS_INIT):
+        break;
 
+        case IDLE:
+        break;
+
+        case DISCHRG:
+            /*
+            if( idx < 10){
+                cell_v[idx] = GetVoltage();
+                idx++;
+            }
+            else{
+                idx = 0;
+            }*
+            
+            pack_v = sum(cell_v);
+            */
+           break;
+
+        case (DISCHRG_DONE):
+        break;
+
+        case (CHRG):
+        /*if( idx < 10){
+            cell_v[idx] = GetVoltage();
+        }
+        if (pack_v >= 37 || ekf.SoC >= MaxSoC){
+            CHRG = 0;
+        }
+
+        pack_v = sum(cell_v);*/
+        break;
+
+        default:
+        break;
     }
+    
     return state;
 }
 
@@ -249,11 +265,9 @@ void setup() {
   // 4) Exit CONFIGUPDATE: subcommand 0x0092
   sendSubcommand(0x0092);
   waitCfgUpdate(false);
-}
 
-void loop() {
-    
-    // TODO: Assign your tasks into the tasks[] array
+  //Set up Tasks
+  // TODO: Assign your tasks into the tasks[] array
     tasks[0].period = Button_Period;
     tasks[0].state = ButtonINIT;
     tasks[0].elapsedTime = Button_Period;
@@ -263,4 +277,14 @@ void loop() {
     tasks[1].state = EKF_init;
     tasks[1].elapsedTime = EKF_Period;
     tasks[1].TickFct = &TickFun_ExtendedKalmanFilter;
+
+    tasks[2].period = BMS_Period;
+    tasks[2].state = BMS_INIT;
+    tasks[2].elapsedTime = BMS_Period;
+    tasks[2].TickFct = &BMS_Test_TickFun;
+
+    TimerSet(GCD_PERIOD);
+    TimerOn();
 }
+
+void loop() {}
