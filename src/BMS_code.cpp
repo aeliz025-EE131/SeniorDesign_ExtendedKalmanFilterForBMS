@@ -90,8 +90,9 @@ int Button_TickFun(int state){
 /*-------------------------------------------*/
 /*---------- EKF State Machine --------------*/
 /*-------------------------------------------*/
-enum EKF_State { EKF_init, EKF_Prediciton, EKF_Update};
+enum EKF_State { EKF_init, EKF_RUN};
 int TickFun_ExtendedKalmanFilter(int state){
+    static unsigned char i;
 
     //State transitions
     switch(state){
@@ -99,22 +100,14 @@ int TickFun_ExtendedKalmanFilter(int state){
             //setting up parameters for each cell (total of 10)
             //please initalize all parameters and variables before proceeding!!
             //ALL PARAMETERS ARE IN THE EKF_FUNCTIONS.h
-            for(int i = 0; i < NUM_CELLS; i++){
-                cells_INIT(i);
-            }
-            state = EKF_Prediciton;
+            for(int idx = 0; idx < NUM_CELLS; idx++){
+                cells_INIT(idx);}
+            i = 0;
+            state = EKF_RUN;
             break;
 
-        case(EKF_Prediciton):
-            //grab current/1000
-            state = EKF_Update;
-            break;
-
-        case(EKF_Update):
-            //grab current/1000
-            //grab cell_v[i]/1000
-            state = EKF_Prediciton;
-            break;
+        case (EKF_RUN):
+        break;
 
         default:
             state = EKF_init;
@@ -124,18 +117,23 @@ int TickFun_ExtendedKalmanFilter(int state){
     //State Actions
     switch(state){
         case(EKF_init):
-            break;
+        break;
 
-        case(EKF_Prediciton):
-            //Prediction_TimeUpdate(current);
-            break;
+        case(EKF_RUN):
+        float I_A = current / 1000.0f;     //convert mA → A
+        if(i < NUM_CELLS){
+            float V_V = cell_v[i] / 1000.0f;   // *** FIXED: mV → V
+            Prediction_TimeUpdate(i, I_A);
+            Correction_MeasUpdate(i, V_V, I_A); 
+        }
+        else{
+            i = 0; //restart the indexing
+        }
 
-        case(EKF_Update):
-            //Correction_MeasUpdate(voltage, current);
-            break;
+        break;
 
         default:
-            break;   
+        break;   
     }
 
     return state;
