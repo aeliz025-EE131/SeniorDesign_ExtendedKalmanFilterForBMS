@@ -1,8 +1,8 @@
 #ifndef BQ_COMMANDS
 #define BQ_COMMANDS
 
-#include <Arduino.h>
 #include <Wire.h>
+#include <Arduino.h>
 
 const uint8_t BQ_ADDR = 0x08;   // <-- set to your BQ76942 I2C address
 
