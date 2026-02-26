@@ -35,7 +35,6 @@ const unsigned char GCD_PERIOD = 100;
 EKF_1RC ekf[NUM_CELLS];
 bool SysON;
 bool CHARGE;
-bool DSCHRG_FET;
 bool CHRG_FET;
 float current; //get current command (ex 100mA or -10mA)
 uint16_t cell_v[10]; //get voltage in mV (ex. 3700 mV) for each cell
@@ -107,6 +106,7 @@ int TickFun_ExtendedKalmanFilter(int state){
             break;
 
         case (EKF_RUN):
+            state = EKF_RUN;
         break;
 
         default:
@@ -142,6 +142,7 @@ int TickFun_ExtendedKalmanFilter(int state){
 /*-------------------------------------------*/
 /*---------- BMS State Machine --------------*/
 /*-------------------------------------------*/
+/*
 enum states {BMS_INIT, IDLE, DISCHRG, DISCHRG_DONE, CHRG} BMS_state;
 int BMS_Test_TickFun(int state){
     //static unsigned char idx = 0;
@@ -174,7 +175,7 @@ int BMS_Test_TickFun(int state){
             else if( SysON == 1 && ( pack_v <= 33 || ekf.SoC <= MinSoC){
                 //disableDSCHRG_FETS();
                 state = DISCHRG_DONE;
-            }*/
+            }
         break;
 
         /*case (DISCHRG_DONE):
@@ -190,7 +191,7 @@ int BMS_Test_TickFun(int state){
                 disableBalancing();
                 state = IDLE;
                 }
-        break;*/
+        break;
 
         default:
             state = BMS_INIT;
@@ -216,7 +217,7 @@ int BMS_Test_TickFun(int state){
             }*
             
             pack_v = sum(cell_v);
-            */
+            
            break;
 
         case (DISCHRG_DONE):
@@ -230,7 +231,7 @@ int BMS_Test_TickFun(int state){
             CHRG = 0;
         }
 
-        pack_v = sum(cell_v);*/
+        pack_v = sum(cell_v);
         break;
 
         default:
@@ -239,6 +240,7 @@ int BMS_Test_TickFun(int state){
     
     return state;
 }
+*/
 
 void setup() {
   Wire.begin();
@@ -276,10 +278,10 @@ void setup() {
     tasks[1].elapsedTime = EKF_Period;
     tasks[1].TickFct = &TickFun_ExtendedKalmanFilter;
 
-    tasks[2].period = BMS_Period;
+    /*tasks[2].period = BMS_Period;
     tasks[2].state = BMS_INIT;
     tasks[2].elapsedTime = BMS_Period;
-    tasks[2].TickFct = &BMS_Test_TickFun;
+    tasks[2].TickFct = &BMS_Test_TickFun;*/
 
     TimerSet(GCD_PERIOD);
     TimerOn();

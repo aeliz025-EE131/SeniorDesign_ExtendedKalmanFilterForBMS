@@ -60,11 +60,11 @@ void cells_INIT(int i){
     ekf[i].Q_nom = 3.5 * 3600;    //Nomincal capacity is 3500 mAhr = 3.5 Ahr
 
 
-    /*ekf[i].R_1 = 
-    ekf[i].C_1 =
-    ekf[i].dt = 0.1f;
-    ekf[i].a = exp(-dt/(R_1*C_1)); 
-    ekf[i].b = R_1*(1.0f - a);*/
+    ekf[i].R_1 = 0.015; //milli-ohms
+    ekf[i].C_1 = 2500;  //Farads
+    ekf[i].dt = 0.1f;   //100ms
+    ekf[i].a = exp(-ekf[i].dt/(ekf[i].R_1 * ekf[i].C_1)); 
+    ekf[i].b = ekf[i].R_1*(1.0f - a);
 
     //Covariance matrix
     ekf[i].P_00 = 0.01f;
