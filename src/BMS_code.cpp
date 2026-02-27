@@ -15,21 +15,19 @@ typedef struct task{
 } task;
 
 task tasks[NUM_TASKS]; // declared task array with 5 tasks
-
-//ALL GLOBAL VARIABLES SHARED ACROSS TICK FUNCTIONS
 EKF_1RC ekf[NUM_CELLS];
 
 bool SysON;
 bool CHARGE;
 bool CHRG_FET;
 float current; //get current command (ex 100mA or -10mA)
-uint16_t cell_v[10]; //get voltage in mV (ex. 3700 mV) for each cell
+//uint16_t cell_v[10]; //get voltage in mV (ex. 3700 mV) for each cell
 
 //ALL PERIODS TO DECLARE
-const unsigned char EKF_Period = 1000; //100ms
-const unsigned char Button_Period = 1000;
+const unsigned long EKF_Period = 500; //100ms
+const unsigned long Button_Period = 500;
 //const unsigned char BMS_Period = 100;
-const unsigned char GCD_PERIOD = 1000;
+const unsigned long GCD_PERIOD = 500;
 
 void TimerISR() {
 	for ( unsigned int i = 0; i < NUM_TASKS; i++ ) {                   // Iterate through each task in the task array
@@ -94,6 +92,8 @@ int Button_TickFun(int state){
 enum EKF_State { EKF_init, EKF_RUN};
 int TickFun_ExtendedKalmanFilter(int state){
     static unsigned char i;
+    float current = 0.3;
+    static float voltage = 3.65;
 
     //State transitions
     switch(state){
@@ -101,10 +101,10 @@ int TickFun_ExtendedKalmanFilter(int state){
             //setting up parameters for each cell (total of 10)
             //please initalize all parameters and variables before proceeding!!
             //ALL PARAMETERS ARE IN THE EKF_FUNCTIONS.h
-            for(int idx = 0; idx < 10; idx++){
+            for(int idx = 0; idx < NUM_CELLS; idx++){
                 cells_INIT(idx);}
-            i = 0;
             //sendSubcommand(0x0095); //MUST initalize the FETS to be OFF
+            i = 0;
             state = EKF_RUN;
             break;
 
@@ -124,14 +124,15 @@ int TickFun_ExtendedKalmanFilter(int state){
 
         case(EKF_RUN):
         //float I_A = current / 1000.0f;     //convert mA → A
-        if(i < 10 && SysON ){
+        if(i < NUM_CELLS && SysON ){
             Serial.println("On and Running");
+            //float V_V = cell_v[i] / 1000.0f;   // *** FIXED: mV → V
+            Prediction_TimeUpdate(i, current);
+            Correction_MeasUpdate(i, voltage, current);
+            Serial.println(ekf[i].SoC);
             i++;
-            /*float V_V = cell_v[i] / 1000.0f;   // *** FIXED: mV → V
-            Prediction_TimeUpdate(i, I_A);
-            Correction_MeasUpdate(i, V_V, I_A); */
         }
-        else if (i >= 10 && SysON){
+        else if (i >= NUM_CELLS && SysON){
             i = 0; //restart the indexing
             Serial.println("Restart and Running");
         }

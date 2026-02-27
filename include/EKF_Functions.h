@@ -5,7 +5,7 @@
 #include <math.h>
 #include <stdint.h>
 
-#define NUM_CELLS 10
+#define NUM_CELLS 5
 
 //All state space variables and battery parameters
 //battery parameters must be obtained from pulse discharge test
