@@ -38,10 +38,10 @@ typedef struct{
 
 EKF_1RC ekf[NUM_CELLS];
 
-const float a = 2.50638087f;
-const float b = 4.05668091f;
-const float c = -5.73399353f;
-const float d = 3.29784602f;
+const float a = 2506.38087f;
+const float b = 4056.68091f;
+const float c = -5733.99353f;
+const float d = 3297.84602f;
 
 float OCV_SOC(float soc){
     return a + b*soc + c*(soc*soc) + d*(soc*soc*soc);
@@ -58,12 +58,12 @@ void cells_INIT(int i){
     ekf[i].SoC = 0.5;              //initializing SoC at 50%
     ekf[i].Vrc = 0.0;
     ekf[i].R_0 = 0.03;            //internal resistance is 0.03 milli-ohms based on the datasheet
-    ekf[i].Q_nom = 3.5;           //Nomincal capacity is 3500 mAhr = 3.5 Ahr
+    ekf[i].Q_nom = 3500;           //Nomincal capacity is 3500 mAhr = 3.5 Ahr
 
 
     ekf[i].R_1 = 0.015f; //milli-ohms
     ekf[i].C_1 = 2500;  //Farads
-    ekf[i].dt = 0.1f;   //100ms
+    ekf[i].dt = 0.5f;   //100ms
     ekf[i].a = exp(-ekf[i].dt/(ekf[i].R_1 * ekf[i].C_1)); 
     ekf[i].b = ekf[i].R_1*(1.0f - ekf[i].a);
 

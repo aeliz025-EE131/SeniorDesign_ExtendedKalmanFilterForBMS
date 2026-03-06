@@ -80,10 +80,10 @@ int Button_TickFun(int state){
 enum EKF_State { EKF_init, EKF_RUN };
 
 int TickFun_ExtendedKalmanFilter(int state){
-    float current = directCommand(0x3A)/3000; //change to get current command
-    double battCell_voltage[10];  //change to get voltage command
+    int16_t current = -1*directCommand(0x3A)/(3); //change to get current command
+    int16_t battCell_voltage[10];  //change to get voltage command
     for (int i =0; i<NUM_CELLS; i++){
-        battCell_voltage[i]=directCommand(CELL_NO_TO_ADDR(i+1))/1000;
+        battCell_voltage[i]=directCommand(CELL_NO_TO_ADDR(i+1));
     }
     static unsigned char count;
     Serial.print("current: ");
@@ -157,10 +157,6 @@ int BMS_Test_TickFun(int state){
     int16_t pack_curr = directCommand(0x3A)/3;
     unsigned int pack_v = 0;
     for (int i =0; i<NUM_CELLS; i++){batt_cell[i]=directCommand(CELL_NO_TO_ADDR(i+1)); pack_v +=batt_cell[i];}
-   /* Serial.print("Pack Voltage: ");
-    Serial.println(pack_v);
-    Serial.print("Pack Current: ");
-    Serial.println(pack_curr);*/
 
     //transitions
     switch(state){
@@ -211,28 +207,24 @@ int BMS_Test_TickFun(int state){
 
         case IDLE:
          sendSubcommand(0x0095);
-       //  Serial.println("IDLE");
          digitalWrite(greenLED, 0);
          digitalWrite(redLED, 0);
         break;
 
         case DISCHRG:
          sendSubcommand(0x0096);
-       //  Serial.println("DISCHRG");
          digitalWrite(greenLED, 1);
          digitalWrite(redLED, 0);
         break;
 
         case (DISCHRG_DONE):
          sendSubcommand(0x0095);
-         //Serial.println("DISCHRG done");
          digitalWrite(greenLED, 0);
          digitalWrite(redLED, 1);
         break;
 
         case (CHRG):
             sendSubcommand(0x0096);
-         //   Serial.println("CHRG");
             digitalWrite(redLED, 0);
             if (idx%2 == 0){
                 digitalWrite(greenLED, 1);
