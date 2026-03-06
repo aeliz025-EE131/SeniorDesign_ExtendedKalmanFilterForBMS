@@ -80,10 +80,10 @@ int Button_TickFun(int state){
 enum EKF_State { EKF_init, EKF_RUN };
 
 int TickFun_ExtendedKalmanFilter(int state){
-    float current = directCommand(0x3A)/3000; //change to get current command
-    double battCell_voltage[10];  //change to get voltage command
+    int16_t current = -1*directCommand(0x3A)/(3); //change to get current command
+    int16_t battCell_voltage[10];  //change to get voltage command
     for (int i =0; i<NUM_CELLS; i++){
-        battCell_voltage[i]=directCommand(CELL_NO_TO_ADDR(i+1))/1000;
+        battCell_voltage[i]=directCommand(CELL_NO_TO_ADDR(i+1));
     }
     static unsigned char count;
     Serial.print("current: ");

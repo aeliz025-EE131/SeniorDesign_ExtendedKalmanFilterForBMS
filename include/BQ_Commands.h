@@ -17,7 +17,7 @@ int16_t directCommand(byte command) {
   byte lsb = Wire.read();
   byte msb = Wire.read();
 
-  return (unsigned int)(msb << 8 | lsb);
+  return (int16_t)(msb << 8 | lsb);
 }
 
 void sendSubcommand(uint16_t cmd)
