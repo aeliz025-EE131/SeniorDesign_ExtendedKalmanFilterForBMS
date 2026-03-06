@@ -5,7 +5,7 @@
 #include <math.h>
 #include <stdint.h>
 
-#define NUM_CELLS 1
+#define NUM_CELLS 10
 
 //All state space variables and battery parameters
 //battery parameters must be obtained from pulse discharge test
@@ -35,6 +35,7 @@ typedef struct{
     float b;                            //R_1(1 - a)
 
 } EKF_1RC;
+
 EKF_1RC ekf[NUM_CELLS];
 
 const float a = 2.50638087f;
