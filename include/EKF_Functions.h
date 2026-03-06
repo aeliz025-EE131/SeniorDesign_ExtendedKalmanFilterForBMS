@@ -5,7 +5,7 @@
 #include <math.h>
 #include <stdint.h>
 
-#define NUM_CELLS 5
+#define NUM_CELLS 1
 
 //All state space variables and battery parameters
 //battery parameters must be obtained from pulse discharge test
@@ -35,7 +35,7 @@ typedef struct{
     float b;                            //R_1(1 - a)
 
 } EKF_1RC;
-extern EKF_1RC ekf[NUM_CELLS];
+EKF_1RC ekf[NUM_CELLS];
 
 const float a = 2.50638087f;
 const float b = 4.05668091f;
@@ -54,17 +54,17 @@ float dOCV_dSoC(float soc){
 /*------ Initalizing Cells Function ---------*/
 /*-------------------------------------------*/
 void cells_INIT(int i){
-    ekf[i].SoC = 0.5;              //initializing SoC at 50%
-    ekf[i].Vrc = 0.0;
-    ekf[i].R_0 = 0.03;            //internal resistance is 0.03 milli-ohms based on the datasheet
-    ekf[i].Q_nom = 3.5 * 3600;    //Nomincal capacity is 3500 mAhr = 3.5 Ahr
+    ekf[i].SoC = 0.5f;                          //initializing SoC at 50%
+    ekf[i].Vrc = 0.0f;
+    ekf[i].R_0 = 0.03f;                       //internal resistance is 0.03 milli-ohms based on the datasheet
+    ekf[i].Q_nom = 3.5f * 3600.0f;           //Nomincal capacity is 3500 mAhr = 3.5 Ahr
 
 
-    ekf[i].R_1 = 0.015; //milli-ohms
-    ekf[i].C_1 = 2500;  //Farads
-    ekf[i].dt = 0.1f;   //100ms
+    ekf[i].R_1 = 0.015f;    //ohms
+    ekf[i].C_1 = 2500.0f;   //Farads
+    ekf[i].dt = 0.1f;       //100ms
     ekf[i].a = exp(-ekf[i].dt/(ekf[i].R_1 * ekf[i].C_1)); 
-    ekf[i].b = ekf[i].R_1*(1.0f - a);
+    ekf[i].b = ekf[i].R_1*(1.0f - ekf[i].a);
 
     //Covariance matrix
     ekf[i].P_00 = 0.01f;
@@ -108,10 +108,18 @@ void Correction_MeasUpdate( int idx, float V, float I){
     float V_Predict = OCV_SOC(ekf[idx].SoC) - ekf[idx].Vrc - ekf[idx].R_0* I;
     float dK = V - V_Predict;
 
+    Serial.print("volt predict: ");
+    Serial.println(V_Predict);
+    
     //linearize measurement equation 
     //Hk = dh(x,u)/dx = [d(V_OCV(SoC(K)))/d(SoC) -1]
     float H_0 = dOCV_dSoC(ekf[idx].SoC);
     float H_1 = -1.0f;
+
+    Serial.print("Hk: ");
+    Serial.print(H_0);
+    Serial.print(" ");
+    Serial.println(H_1);
 
     //innovation covariance S
     //S(k) = H*P_predict*(H)^T + R
@@ -123,6 +131,11 @@ void Correction_MeasUpdate( int idx, float V, float I){
     //K = P*(H)^T*(S)^(-1)
     float KalmanGain_0 = (ekf[idx].P_00*H_0 + ekf[idx].P_01*H_1)/S;
     float KalmanGain_1 = (ekf[idx].P_10*H_0 + ekf[idx].P_11*H_1)/S;
+
+    Serial.print("K0: ");
+    Serial.println(KalmanGain_0);
+    Serial.print("K1: ");
+    Serial.println(KalmanGain_1);
 
     //Updating the state space equations
     //x = x(k) + K*dK
