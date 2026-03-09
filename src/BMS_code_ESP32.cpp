@@ -14,6 +14,7 @@
 
 unsigned char SysON;
 unsigned char CHARGE;
+float soc_sum;
 
 /*-------------------------------------------*/
 /*------ Task Periods -----------------------*/
@@ -88,6 +89,7 @@ int TickFun_ExtendedKalmanFilter(int state){
     static unsigned char count;
     Serial.print("current: ");
     Serial.println(current);
+    
     /*----------- State Transitions ----------*/
     switch(state){
         case EKF_init:
@@ -126,7 +128,7 @@ int TickFun_ExtendedKalmanFilter(int state){
                 count++;
             }
             else if(count >= NUM_CELLS){
-                float soc_sum =0.0f;
+                soc_sum =0.0f;
                 for(int i = 0; i < NUM_CELLS; i++){
                     soc_sum += ekf[i].SoC;
                 }
@@ -157,6 +159,18 @@ int BMS_Test_TickFun(int state){
     int16_t pack_curr = directCommand(0x3A)/3;
     unsigned int pack_v = 0;
     for (int i =0; i<NUM_CELLS; i++){batt_cell[i]=directCommand(CELL_NO_TO_ADDR(i+1)); pack_v +=batt_cell[i];}
+    
+    Serial.print(">");
+    Serial.print("SoC: ");
+    Serial.print(soc_sum);
+    Serial.print(",");
+    Serial.print("pack_voltage: ");
+    Serial.print(pack_v);
+    Serial.print(",");
+    Serial.print("pack current: ");
+    Serial.print(pack_curr);
+    Serial.println();
+
 
     //transitions
     switch(state){
