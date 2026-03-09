@@ -38,10 +38,10 @@ typedef struct{
 
 EKF_1RC ekf[NUM_CELLS];
 
-const float a = 2506.38087f;
-const float b = 4056.68091f;
-const float c = -5733.99353f;
-const float d = 3297.84602f;
+const float a = 2.50638087f;
+const float b = 4.05668091f;
+const float c = -5.73399353f;
+const float d = 3.29784602f;
 
 float OCV_SOC(float soc){
     return a + b*soc + c*(soc*soc) + d*(soc*soc*soc);
